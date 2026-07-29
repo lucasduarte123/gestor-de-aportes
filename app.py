@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import os
 import math
+import requests
 
 # 1. Configuração da página (DEVE ser a PRIMEIRA chamada do Streamlit!)
 st.set_page_config(
@@ -15,6 +16,16 @@ st.set_page_config(
 CACHE_FILE = "carteira_atual.csv"
 
 # --- FUNÇÕES AUXILIARES DE LIMPEZA DE DADOS ---
+@st.cache_data(ttl=3600)  # Guarda a cotação em cache por 1 hora para economizar requisições
+def obter_cotacao_dolar():
+    """Busca a cotação atual do Dólar em tempo real usando a AwesomeAPI."""
+    try:
+        response = requests.get("https://economia.awesomeapi.com.br/json/last/USD-BRL", timeout=5)
+        data = response.json()
+        return float(data["USDBRL"]["bid"])
+    except Exception:
+        return 5.20  # Valor padrão de segurança caso ocorra erro na chamada
+
 def parse_moeda(valor):
     """Converte valores monetários/formatados (R$ 1.234,56 ou 1234.56) em float numérico puro."""
     if pd.isna(valor) or valor == "" or valor is None:
@@ -55,6 +66,10 @@ st.sidebar.header("Ingestão de Dados")
 uploaded_file = st.sidebar.file_uploader("Carregue seu arquivo CSV da carteira", type=["csv"])
 importar_btn = st.sidebar.button("Importar / Processar", type="primary")
 
+# Chamada e exibição da cotação do dólar
+cotacao_dolar = obter_cotacao_dolar()
+st.sidebar.info(f"💵 Cotação USD/BRL: **R$ {cotacao_dolar:.2f}**")
+
 # Botão para resetar dados salvos
 if st.sidebar.button("🗑️ Limpar Carteira Salva"):
     if 'df_carteira' in st.session_state:
@@ -67,10 +82,10 @@ if st.sidebar.button("🗑️ Limpar Carteira Salva"):
     st.sidebar.warning("Cache e sessão limpos!")
     st.rerun()
 
-# 1. Processamento quando o usuário envia um novo CSV
+# 4. Processamento quando o usuário envia um novo CSV via uploader
 if uploaded_file is not None and importar_btn:
     try:
-        # Tenta ler com ';' primeiro (padrão Investidor10/Excel BR), se falhar tenta ','
+        nome_arquivo = uploaded_file.name
         try:
             df_raw = pd.read_csv(uploaded_file, sep=";", encoding="utf-8-sig")
             if len(df_raw.columns) <= 1:
@@ -80,7 +95,6 @@ if uploaded_file is not None and importar_btn:
             uploaded_file.seek(0)
             df_raw = pd.read_csv(uploaded_file, sep=",", encoding="utf-8-sig")
 
-        # Salva em cache local
         df_raw.to_csv(CACHE_FILE, sep=";", index=False, encoding="utf-8-sig")
         st.session_state['df_carteira'] = df_raw
         st.sidebar.success("Dados importados e salvos com sucesso!")
@@ -88,23 +102,13 @@ if uploaded_file is not None and importar_btn:
     except Exception as e:
         st.sidebar.error(f"Erro ao processar arquivo: {e}")
 
-# 2. Carrega do cache em disco se não estiver na sessão
-elif 'df_carteira' not in st.session_state and os.path.exists(CACHE_FILE):
-    try:
-        df_raw = pd.read_csv(CACHE_FILE, sep=";", encoding="utf-8-sig")
-        st.session_state['df_carteira'] = df_raw
-    except Exception as e:
-        st.sidebar.error(f"Erro ao carregar cache local: {e}")
 
-# 4. Exibição Principal (Apenas executa se houver dados)
+# 6. Exibição Principal (Apenas executa se houver dados)
 if 'df_carteira' in st.session_state and not st.session_state['df_carteira'].empty:
     df = st.session_state['df_carteira'].copy()
 
     # --- IDENTIFICAÇÃO E TRATAMENTO FLEXÍVEL DE COLUNAS ---
-    # Identifica coluna de Classe/Tipo de Ativo
     col_classe = next((c for c in ['Tipo de ativo', 'Tipo', 'Classe', 'Categoria'] if c in df.columns), None)
-    
-    # Identifica coluna de Saldo/Patrimônio
     col_saldo_orig = next((c for c in df.columns if 'Saldo' in c or 'Valor Total' in c or 'Patrimônio' in c), None)
 
     if col_saldo_orig:
@@ -112,7 +116,6 @@ if 'df_carteira' in st.session_state and not st.session_state['df_carteira'].emp
     else:
         df['Saldo_Num'] = 0.0
 
-    # Trata colunas percentuais (% Carteira e % Ideal)
     col_perc_carteira = next((c for c in df.columns if '% Carteira' in c or 'Carteira (%)' in c or '% Atual' in c), None)
     col_perc_ideal = next((c for c in df.columns if '% Ideal' in c or 'Meta (%)' in c or '% Meta' in c), None)
 
@@ -121,21 +124,30 @@ if 'df_carteira' in st.session_state and not st.session_state['df_carteira'].emp
     else:
         df['% Carteira_Num'] = 0.0
 
+    def converter_saldo_brl(row):
+        saldo = row['Saldo_Num']
+        tipo = str(row[col_classe]).strip() if col_classe and col_classe in df.columns else ""
+        if tipo in ['Stocks', 'ETFs Intern.']:
+            return saldo * cotacao_dolar
+        return saldo
+
+    df['Saldo_Num'] = df.apply(converter_saldo_brl, axis=1)
+
     if col_perc_ideal:
         df['% Ideal_Num'] = df[col_perc_ideal].apply(parse_moeda)
     else:
         df['% Ideal_Num'] = 0.0
 
-    # Se não houver % Carteira no CSV, calcula automaticamente com base no Saldo
     patrimonio_total = df['Saldo_Num'].sum()
-    if patrimonio_total > 0 and (col_perc_carteira is None or df['% Carteira_Num'].sum() == 0):
+    if patrimonio_total > 0:
         df['% Carteira_Num'] = (df['Saldo_Num'] / patrimonio_total) * 100
+    else:
+        df['% Carteira_Num'] = 0.0
 
     # --- CARDS DE DESTAQUE ---
     st.subheader("📊 Resumo Geral")
     col1, col2, col3 = st.columns(3)
 
-    # Formatação BRL do Patrimônio Total
     patrimonio_fmt = f"R$ {patrimonio_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
     col1.metric(label="Patrimônio Total", value=patrimonio_fmt)
@@ -196,14 +208,10 @@ if 'df_carteira' in st.session_state and not st.session_state['df_carteira'].emp
     # --- TABELA DE POSIÇÕES DETALHADAS ---
     st.subheader("📋 Posições Atuais da Carteira")
     
-    # Prepara dataframe para exibição sem colunas técnicas auxiliares
     df_display = df.drop(columns=['Saldo_Num', '% Carteira_Num', '% Ideal_Num'], errors='ignore').copy()
-    
-    # Preenche valores nulos com hífen para uma visualização limpa
     df_display = df_display.fillna('-')
 
     st.dataframe(df_display, use_container_width=True)
 
 else:
-    # Estado inicial limpo
     st.info("👋 Nenhum dado carregado. Faça o upload do arquivo CSV na barra lateral e clique em **Importar / Processar**.")

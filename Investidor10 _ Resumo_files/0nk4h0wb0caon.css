@@ -1,0 +1,1 @@
+.icon{width:var(--width);height:var(--height);background-repeat:no-repeat;background-size:contain;background-image:var(--image);display:block}html[data-theme=dark] .icon{background-image:var(--dark-image)}
