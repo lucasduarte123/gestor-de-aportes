@@ -1,0 +1,67 @@
+Documentação de Arquitetura e Product Backlog (Método Scrum)
+1. Visão Geral e Arquitetura do Software
+1. Definição do Produto
+O Gestor de Aportes Inteligente é um aplicativo híbrido de controle e inteligência financeira para portfólios de investimentos. Ele centraliza a gestão de ativos, realiza análises de mercado orientadas por dados em tempo real e utiliza Inteligência Artificial para otimizar alocações de capital.
+
+2. Stack Tecnológica
+Linguagem Backend/Frontend: Python 3.x
+
+Interface Gráfica Web/Desktop (MVP & Iterações Iniciais): Streamlit (permitindo uso imediato via navegador local ou deploy na nuvem).
+
+Evolução Mobile/App Nativo (Fase Avançada): Flutter (para aplicativos móveis multiplataforma Android e iOS).
+
+Análise de Dados & Manipulação: Pandas e NumPy.
+
+Módulo de Inteligência Artificial & Mercado: Integração com APIs de notícias e Modelos de Linguagem para leitura de conjuntura macroeconômica.
+
+2. Product Backlog & Planejamento de Sprints (Método Scrum)
+Seguindo o método ágil, cada Sprint entregará um incremento funcional utilizável do software.
+
+Sprint 1: Ingestão de Dados e Visualização Base
+Objetivo: Permitir que o usuário carregue sua base de dados e visualize as posições consolidadas e o valor de mercado atual da carteira.
+
+Histórias de Usuário / Entregas:
+
+Tela de upload de arquivo no formato .csv (ou leitura automática do diretório padrão).
+
+Tratamento e conversão de colunas monetárias e percentuais brasileiras (R$, %, separadores decimais).
+
+Renderização tabular interativa dos ativos e cálculo automático do Valor Total de Mercado da Carteira (Patrimônio).
+
+Sprint 2: Apuração de Rentabilidade e Resultados
+Objetivo: Expandir o painel financeiro para demonstrar o desempenho histórico e a rentabilidade acumulada dos ativos.
+
+Histórias de Usuário / Entregas:
+
+Inclusão de colunas e métricas de variação percentual e ganho de capital por ativo.
+
+Exibição de cards consolidados de lucro/prejuízo geral da carteira com base nos preços médios versus preços atuais de mercado.
+
+Sprint 3: Sugestão de Aportes com IA e Contexto de Mercado
+Objetivo: Inserir o motor de decisão de aportes mensais combinando regras de pontuação de ativos com o cenário macroeconômico atual obtido via IA.
+
+Histórias de Usuário / Entregas:
+
+Campo interativo para definição do valor do aporte mensal planejado pelo usuário.
+
+Módulo de varredura de mercado via IA para análise de notícias globais/nacionais e sentimento de ativos.
+
+Algoritmo de alocação ponderada por nota (score) que sugere quais ativos comprar e a quantidade exata recomendada para o mês.
+
+Sprint 4: Gestão e Projeção Baseada em Metas (Patrimônio, Ativos e Dividendos)
+Objetivo: Permitir o planejamento de longo prazo com base em metas patrimoniais e de fluxo de caixa (proventos).
+
+Histórias de Usuário / Entregas:
+
+Painel de metas para cadastro de objetivo de patrimônio total, composição de ativos e meta de dividendos mensais.
+
+Motor de projeção matemática que calcula o tempo estimado (em meses/anos) para atingir as metas dadas as condições atuais de aporte e dividend yield médio.
+
+Sprint 5: Planejamento Reverso por Prazo (Aporte Dinâmico)
+Objetivo: Inverter a lógica de planejamento, permitindo que o usuário defina o prazo desejado para alcançar uma meta e descubra o esforço de aporte necessário.
+
+Histórias de Usuário / Entregas:
+
+Sliders e campos interativos de prazo de conclusão (anos/meses) acoplados ao painel de metas.
+
+Cálculo dinâmico do Aporte Mensal Necessário para atingir o objetivo estipulado no prazo exato escolhido pelo usuário.
