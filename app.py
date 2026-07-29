@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import math
 
 # 1. Configuração da página (DEVE ser a PRIMEIRA chamada do Streamlit!)
 st.set_page_config(
@@ -71,6 +72,15 @@ if 'df_carteira' in st.session_state:
     st.subheader("📊 Resumo Geral")
     col1, col2, col3 = st.columns(3)
 
+    # Garantia de valor numérico válido
+    try:
+        patrimonio_total = float(patrimonio_total)
+        if math.isnan(patrimonio_total):
+            patrimonio_total = 0.0
+    except (ValueError, TypeError):
+        patrimonio_total = 0.0
+
+    # Formatação em BRL
     patrimonio_fmt = f"R$ {patrimonio_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
     col1.metric(label="Patrimônio Total", value=patrimonio_fmt)
